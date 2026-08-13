@@ -1,0 +1,30 @@
+name: life_toolkit
+description: "待办清单与记账一体的生活助手应用"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+  shared_preferences: ^2.3.0
+  intl: ^0.19.0
+  flutter_local_notifications: ^17.2.1
+  timezone: ^0.9.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.1
+
+flutter_launcher_icons:
+  image_path: "assets/icon.jpg"
+  android: true
+  ios: false
+
+flutter:
+  uses-material-design: true
