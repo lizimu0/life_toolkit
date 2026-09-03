@@ -54,6 +54,16 @@ class _TodoPageState extends State<TodoPage> {
     StorageService.saveTodos(_todos);
   }
 
+  /// 为未完成且未到期的待办（重新）预约提醒。
+  void _scheduleReminderIfNeeded(TodoItem item) {
+    if (item.done || item.dueDate == null) return;
+    NotificationService.scheduleTodoReminder(
+      NotificationService.notificationId(item.id),
+      item.title,
+      item.dueDate!,
+    );
+  }
+
   void _addTodo() {
     final title = _inputController.text.trim();
     if (title.isEmpty) return;
@@ -70,13 +80,7 @@ class _TodoPageState extends State<TodoPage> {
     });
     _inputController.clear();
     _persist();
-    if (item.dueDate != null) {
-      NotificationService.scheduleTodoReminder(
-        int.parse(id),
-        title,
-        item.dueDate!,
-      );
-    }
+    _scheduleReminderIfNeeded(item);
   }
 
   Future<void> _pickReminder() async {
@@ -111,9 +115,14 @@ class _TodoPageState extends State<TodoPage> {
   void _toggleDone(TodoItem item, bool? value) {
     setState(() => item.done = value ?? false);
     _persist();
-    // 完成任务后取消对应提醒
-    if (item.done && item.dueDate != null) {
-      NotificationService.cancel(int.parse(item.id));
+    if (item.dueDate == null) return;
+    final nid = NotificationService.notificationId(item.id);
+    if (item.done) {
+      // 完成任务后取消对应提醒
+      NotificationService.cancel(nid);
+    } else {
+      // 取消完成时恢复提醒调度
+      _scheduleReminderIfNeeded(item);
     }
   }
 
@@ -121,7 +130,7 @@ class _TodoPageState extends State<TodoPage> {
     setState(() => _todos.remove(item));
     _persist();
     if (item.dueDate != null) {
-      NotificationService.cancel(int.parse(item.id));
+      NotificationService.cancel(NotificationService.notificationId(item.id));
     }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -131,6 +140,8 @@ class _TodoPageState extends State<TodoPage> {
           onPressed: () {
             setState(() => _todos.insert(0, item));
             _persist();
+            // 撤销删除时恢复提醒调度
+            _scheduleReminderIfNeeded(item);
           },
         ),
       ),

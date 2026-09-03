@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
@@ -8,14 +9,27 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
   static bool _initialized = false;
 
+  /// 通知 ID 必须落在 32 位有符号整数范围内（zonedSchedule 会校验并抛出
+  /// ArgumentError），因此用 FNV-1a 将待办的字符串 ID 映射为稳定的 31 位
+  /// 整数：同一待办在调度与取消时得到同一 ID，且持久化后重启不变。
+  static int notificationId(String itemId) {
+    var hash = 0x811c9dc5;
+    for (final unit in itemId.codeUnits) {
+      hash ^= unit;
+      hash = (hash * 0x01000193) & 0x7FFFFFFF;
+    }
+    return hash & 0x7FFFFFFF;
+  }
+
   static Future<void> init() async {
     if (_initialized) return;
     try {
       tz_data.initializeTimeZones();
       try {
         tz.setLocalLocation(tz.getLocation('Asia/Shanghai'));
-      } catch (_) {
+      } catch (e) {
         // 时区数据异常时使用默认本地时区
+        debugPrint('NotificationService: 设置时区失败,回退默认时区: $e');
       }
       const androidSettings =
           AndroidInitializationSettings('mipmap_ic_launcher');
@@ -28,8 +42,9 @@ class NotificationService {
               AndroidFlutterLocalNotificationsPlugin>()
           ?.requestNotificationsPermission();
       _initialized = true;
-    } catch (_) {
+    } catch (e) {
       // 初始化失败不影响应用主体功能，仅提醒不可用
+      debugPrint('NotificationService: 初始化失败,提醒功能不可用: $e');
     }
   }
 
@@ -59,14 +74,17 @@ class NotificationService {
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
       );
-    } catch (_) {
-      // 调度失败静默处理，不影响用户操作
+    } catch (e) {
+      // 调度失败不阻断用户操作，但必须留痕，避免提醒静默失效
+      debugPrint('NotificationService: 调度提醒失败(id=$id, title=$title): $e');
     }
   }
 
   static Future<void> cancel(int id) async {
     try {
       await _plugin.cancel(id);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('NotificationService: 取消提醒失败(id=$id): $e');
+    }
   }
 }
