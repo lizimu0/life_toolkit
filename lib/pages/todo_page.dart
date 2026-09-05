@@ -40,18 +40,40 @@ class _TodoPageState extends State<TodoPage> {
   }
 
   Future<void> _loadData() async {
-    final todos = await StorageService.loadTodos();
-    if (!mounted) return;
-    setState(() {
-      _todos
-        ..clear()
-        ..addAll(todos);
-      _loading = false;
-    });
+    try {
+      final todos = await StorageService.loadTodos();
+      if (!mounted) return;
+      setState(() {
+        _todos
+          ..clear()
+          ..addAll(todos);
+        _loading = false;
+      });
+    } catch (e) {
+      // JSON 损坏等异常不能让界面永远转圈:记录日志并按空数据展示
+      debugPrint('TodoPage 加载数据失败: $e');
+      if (!mounted) return;
+      setState(() => _loading = false);
+    }
   }
 
-  void _persist() {
-    StorageService.saveTodos(_todos);
+  Future<void> _persist() async {
+    try {
+      await StorageService.saveTodos(_todos);
+    } catch (e) {
+      // 写盘失败此前静默丢数据;至少留痕便于排查
+      debugPrint('TodoPage 保存失败: $e');
+    }
+  }
+
+  /// 为未完成且未到期的待办（重新）预约提醒。
+  void _scheduleReminderIfNeeded(TodoItem item) {
+    if (item.done || item.dueDate == null) return;
+    NotificationService.scheduleTodoReminder(
+      NotificationService.notificationId(item.id),
+      item.title,
+      item.dueDate!,
+    );
   }
 
   void _addTodo() {
@@ -70,13 +92,7 @@ class _TodoPageState extends State<TodoPage> {
     });
     _inputController.clear();
     _persist();
-    if (item.dueDate != null) {
-      NotificationService.scheduleTodoReminder(
-        int.parse(id),
-        title,
-        item.dueDate!,
-      );
-    }
+    _scheduleReminderIfNeeded(item);
   }
 
   Future<void> _pickReminder() async {
@@ -111,9 +127,14 @@ class _TodoPageState extends State<TodoPage> {
   void _toggleDone(TodoItem item, bool? value) {
     setState(() => item.done = value ?? false);
     _persist();
-    // 完成任务后取消对应提醒
-    if (item.done && item.dueDate != null) {
-      NotificationService.cancel(int.parse(item.id));
+    if (item.dueDate == null) return;
+    final nid = NotificationService.notificationId(item.id);
+    if (item.done) {
+      // 完成任务后取消对应提醒
+      NotificationService.cancel(nid);
+    } else {
+      // 取消完成时恢复提醒调度
+      _scheduleReminderIfNeeded(item);
     }
   }
 
@@ -121,7 +142,7 @@ class _TodoPageState extends State<TodoPage> {
     setState(() => _todos.remove(item));
     _persist();
     if (item.dueDate != null) {
-      NotificationService.cancel(int.parse(item.id));
+      NotificationService.cancel(NotificationService.notificationId(item.id));
     }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -131,6 +152,8 @@ class _TodoPageState extends State<TodoPage> {
           onPressed: () {
             setState(() => _todos.insert(0, item));
             _persist();
+            // 撤销删除时恢复提醒调度
+            _scheduleReminderIfNeeded(item);
           },
         ),
       ),

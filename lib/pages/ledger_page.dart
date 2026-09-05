@@ -27,18 +27,30 @@ class _LedgerPageState extends State<LedgerPage> {
   }
 
   Future<void> _loadData() async {
-    final records = await StorageService.loadRecords();
-    if (!mounted) return;
-    setState(() {
-      _records
-        ..clear()
-        ..addAll(records);
-      _loading = false;
-    });
+    try {
+      final records = await StorageService.loadRecords();
+      if (!mounted) return;
+      setState(() {
+        _records
+          ..clear()
+          ..addAll(records);
+        _loading = false;
+      });
+    } catch (e) {
+      // JSON 损坏等异常不能让界面永远转圈:记录日志并按空数据展示
+      debugPrint('LedgerPage 加载数据失败: $e');
+      if (!mounted) return;
+      setState(() => _loading = false);
+    }
   }
 
-  void _persist() {
-    StorageService.saveRecords(_records);
+  Future<void> _persist() async {
+    try {
+      await StorageService.saveRecords(_records);
+    } catch (e) {
+      // 写盘失败此前静默丢数据;至少留痕便于排查
+      debugPrint('LedgerPage 保存失败: $e');
+    }
   }
 
   Future<void> _openAddSheet() async {

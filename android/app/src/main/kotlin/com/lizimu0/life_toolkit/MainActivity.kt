@@ -1,4 +1,4 @@
-package com.example.life_toolkit
+package com.lizimu0.life_toolkit
 
 import io.flutter.embedding.android.FlutterActivity
 

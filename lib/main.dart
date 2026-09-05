@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'pages/home_page.dart';
 import 'services/notification_service.dart';
@@ -19,6 +20,14 @@ class LifeToolkitApp extends StatelessWidget {
     return MaterialApp(
       title: '生活助手',
       debugShowCheckedModeBanner: false,
+      // 系统组件(日期/时间选择器等)跟随中文
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [Locale('zh'), Locale('en')],
+      locale: const Locale('zh'),
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF1677FF),
