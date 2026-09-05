@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
@@ -26,10 +27,16 @@ class NotificationService {
     try {
       tz_data.initializeTimeZones();
       try {
-        tz.setLocalLocation(tz.getLocation('Asia/Shanghai'));
+        // 跟随设备时区;获取失败(平台不支持/IANA 名缺失)时回退北京时间
+        final info = await FlutterTimezone.getLocalTimezone();
+        tz.setLocalLocation(tz.getLocation(info.identifier));
       } catch (e) {
-        // 时区数据异常时使用默认本地时区
-        debugPrint('NotificationService: 设置时区失败,回退默认时区: $e');
+        debugPrint('NotificationService: 获取设备时区失败,回退 Asia/Shanghai: $e');
+        try {
+          tz.setLocalLocation(tz.getLocation('Asia/Shanghai'));
+        } catch (e2) {
+          debugPrint('NotificationService: 回退时区也失败: $e2');
+        }
       }
       const androidSettings =
           AndroidInitializationSettings('mipmap_ic_launcher');

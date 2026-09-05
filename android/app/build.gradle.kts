@@ -5,8 +5,8 @@ plugins {
 }
 
 android {
-    namespace = "com.example.life_toolkit"
-    compileSdk = flutter.compileSdkVersion
+    namespace = "com.lizimu0.life_toolkit"
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -17,12 +17,11 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.life_toolkit"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        applicationId = "com.lizimu0.life_toolkit"
+        // 显式固定 SDK 版本(与 Flutter 3.47 stable 默认一致),构建不随工具链漂移;
+        // 升级 Flutter 后如默认值变化,此处需同步评估
+        minSdk = 24
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }

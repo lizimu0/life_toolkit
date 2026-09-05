@@ -40,18 +40,30 @@ class _TodoPageState extends State<TodoPage> {
   }
 
   Future<void> _loadData() async {
-    final todos = await StorageService.loadTodos();
-    if (!mounted) return;
-    setState(() {
-      _todos
-        ..clear()
-        ..addAll(todos);
-      _loading = false;
-    });
+    try {
+      final todos = await StorageService.loadTodos();
+      if (!mounted) return;
+      setState(() {
+        _todos
+          ..clear()
+          ..addAll(todos);
+        _loading = false;
+      });
+    } catch (e) {
+      // JSON 损坏等异常不能让界面永远转圈:记录日志并按空数据展示
+      debugPrint('TodoPage 加载数据失败: $e');
+      if (!mounted) return;
+      setState(() => _loading = false);
+    }
   }
 
-  void _persist() {
-    StorageService.saveTodos(_todos);
+  Future<void> _persist() async {
+    try {
+      await StorageService.saveTodos(_todos);
+    } catch (e) {
+      // 写盘失败此前静默丢数据;至少留痕便于排查
+      debugPrint('TodoPage 保存失败: $e');
+    }
   }
 
   /// 为未完成且未到期的待办（重新）预约提醒。
